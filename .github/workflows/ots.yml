@@ -1,0 +1,55 @@
+name: ots
+
+# OpenTimestamps leg of the UST anchor chain.
+# - on push of a new anchor: stamp it (calendar servers, free, no accounts)
+# - daily: upgrade pending proofs once calendars anchor into Bitcoin
+# Proof path: slot hash -> merkle path -> root (anchor json) -> git commit
+#             -> .ots -> Bitcoin block. No trust in the operator required.
+
+on:
+  push:
+    paths:
+      - "anchors/**/*.json"
+  schedule:
+    - cron: "23 3 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: ots
+  cancel-in-progress: false
+
+jobs:
+  ots:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - run: pip install --quiet opentimestamps-client
+
+      - name: stamp new anchors
+        run: |
+          shopt -s globstar nullglob
+          for f in anchors/**/*.json; do
+            if [ ! -f "$f.ots" ]; then
+              ots stamp "$f"
+              echo "stamped $f"
+            fi
+          done
+
+      - name: upgrade pending proofs
+        run: |
+          shopt -s globstar nullglob
+          for f in anchors/**/*.json.ots; do
+            ots upgrade "$f" || true
+          done
+          find anchors -name "*.bak" -delete
+
+      - name: commit proofs
+        run: |
+          git config user.name "ots-bot"
+          git config user.email "contact@noosphere.md"
+          git add -A anchors
+          git diff --cached --quiet || { git commit -m "ots: stamp/upgrade proofs"; git push; }
