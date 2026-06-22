@@ -1,0 +1,8 @@
+{
+  "protocol": "UST",
+  "kind": "outage-proof",
+  "event": "drill",
+  "at": "2026-06-22T06:16:12.977Z",
+  "drill": true,
+  "digest": "sha256:612545225b7d123d256330081d1803a22d0f56edb840cefdbd937fc112cb8961"
+}
