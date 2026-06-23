@@ -1,7 +1,0 @@
-{
-  "protocol": "UST",
-  "kind": "outage-proof",
-  "event": "outage-start",
-  "at": "2026-06-23T04:51:42.491Z",
-  "digest": "sha256:44b94bb81559877a8f1b15635b21418a94754a26980d0872d07f9be73659b5fa"
-}
