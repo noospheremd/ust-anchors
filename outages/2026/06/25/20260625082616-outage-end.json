@@ -1,0 +1,8 @@
+{
+  "protocol": "UST",
+  "kind": "outage-proof",
+  "event": "outage-end",
+  "startedAt": "2026-06-25T07:47:13.588Z",
+  "endedAt": "2026-06-25T08:26:16.422Z",
+  "digest": "sha256:f4e176469435d0dba8b3e8e3addd3ef512a3092cda61453e5d21361d243d7534"
+}
