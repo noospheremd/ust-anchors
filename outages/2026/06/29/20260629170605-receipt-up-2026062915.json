@@ -1,0 +1,9 @@
+{
+  "protocol": "UST",
+  "kind": "outage-proof",
+  "event": "receipt-up",
+  "hour": "2026-06-29T15",
+  "startedAt": "2026-06-29T17:03:47.250Z",
+  "endedAt": "2026-06-29T17:06:05.944Z",
+  "digest": "sha256:762b21fb5d2d3b9d247f5b5df9c3e87245d685ae2c8ee16d4ab439e8db484dba"
+}
