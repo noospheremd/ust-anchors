@@ -1,0 +1,9 @@
+{
+  "protocol": "UST",
+  "kind": "outage-proof",
+  "event": "receipt-down",
+  "hour": "2026-06-30T08",
+  "due_at": "2026-06-30T09:05:00.000Z",
+  "detected_at": "2026-06-30T09:18:54.671Z",
+  "hash": "sha256:bc609d740f46feab60adc69aed5e47de2c8fc9b6b6350937ecae75d8fa5043d0"
+}
