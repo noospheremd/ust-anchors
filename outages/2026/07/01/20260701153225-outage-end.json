@@ -1,0 +1,10 @@
+{
+  "protocol": "UST",
+  "kind": "outage-proof",
+  "event": "outage-end",
+  "started_at": "2026-07-01T13:37:30Z",
+  "ended_at": "2026-07-01T15:32:25.298Z",
+  "duration_ms": 6895298,
+  "incomplete_hours": [],
+  "hash": "sha256:d7a2a7de1461090a4ca09cf0cd7a07df7b8e16c95f781117d4b7f77763e03f31"
+}
