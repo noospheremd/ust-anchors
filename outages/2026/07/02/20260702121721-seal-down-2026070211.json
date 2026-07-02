@@ -1,0 +1,9 @@
+{
+  "protocol": "UST",
+  "kind": "outage-proof",
+  "event": "seal-down",
+  "hour": "2026-07-02T11",
+  "due_at": "2026-07-02T12:15:00.000Z",
+  "detected_at": "2026-07-02T12:17:21.650Z",
+  "hash": "sha256:9202675e880739c021c770ca44ab0b36ad46fe6353cbfbd043726b8da1492742"
+}
