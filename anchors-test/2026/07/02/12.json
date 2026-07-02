@@ -6,5 +6,5 @@
   "hash_algo": "rfc6962-sha256",
   "source": "failover-drill",
   "jwks": "https://noosphere.md/.well-known/jwks.json",
-  "committed_at": "2026-07-02T13:42:55.436Z"
+  "committed_at": "2026-07-02T13:47:11.970Z"
 }
