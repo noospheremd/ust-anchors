@@ -6,6 +6,6 @@
   "hash_algo": "rfc6962-sha256",
   "source": "failover-drill",
   "jwks": "https://noosphere.md/.well-known/jwks.json",
-  "committed_at": "2026-07-02T14:37:52.308Z",
-  "ipfs_cid": "QmfTCaX6nnxmPvz3EgjE4Gv4cuUzeP58A2VapcraJSFiPy"
+  "committed_at": "2026-07-02T14:38:15.897Z",
+  "ipfs_cid": "QmNQhV5yR65jba75HbUyVPYHsKtZsEtTvdJequppinLzkp"
 }
