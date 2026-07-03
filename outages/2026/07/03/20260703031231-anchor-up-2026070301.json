@@ -1,0 +1,10 @@
+{
+  "protocol": "UST",
+  "kind": "outage-proof",
+  "event": "anchor-up",
+  "hour": "2026-07-03T01",
+  "due_at": "2026-07-03T02:15:00.000Z",
+  "detected_at": "2026-07-03T02:15:09.458Z",
+  "resolved_at": "2026-07-03T03:12:31.451Z",
+  "hash": "sha256:dbf57c0ef720c6c2f036ba4c88180799a2b4b3922be88526ffe1829bc7d5fa60"
+}
