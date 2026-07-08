@@ -1,0 +1,11 @@
+{
+  "protocol": "UST",
+  "hour_ust": "ust:20260708.20",
+  "merkle_root": "sha256:113ffd18f4e337378b7814517362eb87cf5c0f8c205eaeefff93bfad2c1d7aa8",
+  "slot_count": 119,
+  "hash_algo": "rfc6962-sha256",
+  "source": "secondary",
+  "jwks": "https://noosphere.md/.well-known/jwks.json",
+  "committed_at": "2026-07-08T22:12:06.447Z",
+  "ipfs_cid": "QmeouQ9XoH5v3ftgS46XcskrsPUcT4ddboTLmxLeTwkbtg"
+}
