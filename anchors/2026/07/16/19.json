@@ -1,0 +1,10 @@
+{
+  "protocol": "UST",
+  "hour_ust": "ust:20260716.19",
+  "merkle_root": "sha256:3dc0c4dd4361b9185e0ffb75867e330f48f2ed0b09222ee6032a112b0accc1d1",
+  "slot_count": 120,
+  "hash_algo": "rfc6962-sha256",
+  "index_url": "https://archive.noosphere.md/archive/2026/07/16/19.index.json",
+  "source": "primary",
+  "committed_at": "2026-07-16T20:02:28.113Z"
+}
