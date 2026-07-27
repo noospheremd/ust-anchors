@@ -36,3 +36,19 @@ Attest it:
 npx @ust-protocol/cli@next discovery <domain_shard> \
   --mirror https://raw.githubusercontent.com/noospheremd/ust-anchors/main/ust-protocol/<domain_shard>/ust-genesis
 ```
+
+---
+
+## What is NOT here, and why
+
+`anchors/`, `anchors-test/`, `outages/` and `witness/` stay at the repository root:
+**live services write to those exact paths**. Moving them into this namespace is a
+coordinated change across three services plus a redeploy, not a repository tidy — the
+writers must be pointed at the new path first, and only then can the old one go.
+
+`anchors-test/` in particular is not leftover test data: `noosphere-anchor-failover`
+writes to it in normal operation. Its name is misleading; its content is live.
+
+`mirror/` was removed here — it held two of the four artifacts under a flat layout that
+a second publisher could not share, and everything it carried is now served from
+`ust-protocol/noosphere.md/`, attested.
