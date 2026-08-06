@@ -57,9 +57,34 @@ jobs:
       - name: upgrade pending proofs
         run: |
           shopt -s globstar nullglob
+          # The same unbounded loop the stamp step had, one step over — and it is what this run met on
+          # 2026-08-06: 1026 proofs, 1004 of them created minutes earlier, every one asked the calendars a
+          # question guaranteed to be answered "not yet".
+          #
+          # Two bounds. `ots info` is LOCAL — measured 0.24s, no network — so a proof that already carries a
+          # Bitcoin attestation costs a file read and is skipped. And the remaining attempts are CAPPED: a
+          # calendar commits within hours, so a pending proof missed today is picked up by tomorrow's run, and
+          # the backlog drains itself without any run ever making a thousand requests.
+          UPGRADE_CAP=200
+          pending=(); final=0
           for f in anchors/**/*.json.ots; do
-            ots upgrade "$f" || true
+            if ots info "$f" 2>/dev/null | grep -q 'BitcoinBlockHeaderAttestation'; then
+              final=$((final+1))
+            else
+              pending+=("$f")
+            fi
           done
+          echo "proofs: $((final + ${#pending[@]})) total · $final anchored in Bitcoin · ${#pending[@]} pending"
+          n=0
+          for f in "${pending[@]}"; do
+            [ "$n" -ge "$UPGRADE_CAP" ] && break
+            ots upgrade "$f" || true
+            n=$((n+1))
+          done
+          echo "upgrade attempts this run: $n (cap $UPGRADE_CAP)"
+          if [ ${#pending[@]} -gt "$UPGRADE_CAP" ]; then
+            echo "$(( ${#pending[@]} - UPGRADE_CAP )) pending proof(s) deferred to the next run — a bounded loop is the point, not an omission"
+          fi
           find anchors -name "*.bak" -delete
 
       - name: commit proofs
