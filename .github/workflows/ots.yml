@@ -54,6 +54,20 @@ jobs:
             done
           fi
 
+      # THE STAMP ABOVE ATTESTS THE FILE. The registered `bitcoin-ots` substrate requires the proof to attest
+      # the ROOT — the connector checks `ots.timestamp.msg == bytes.fromhex(merkle_root)` — so every proof this
+      # repository held before 2026-08-06 is real, Bitcoin-backed, and rejected by a verifier as "not mine".
+      # Measured that day: 1033 stamps, 1031 with a Bitcoin attestation, ZERO hours conformant.
+      #
+      # `ots stamp` cannot do this: it takes files and always hashes their bytes, and no file can hash to a
+      # chosen root. So the digest is stamped through the library, keeping the batching that made the backlog
+      # affordable — one Merkle tree per chunk, one submission per calendar.
+      #
+      # The file-stamp above is KEPT. It is not wrong, it simply proves something else (the file existed), and
+      # the historical set is not rewritten — owner's decision 2026-08-06: the past is fixed forward.
+      - name: stamp anchor ROOTS (the conformant proof)
+        run: python3 tools/stamp-roots.py
+
       - name: upgrade pending proofs
         run: |
           shopt -s globstar nullglob
@@ -69,7 +83,10 @@ jobs:
           # as a bound rather than picked because it looked reasonable.
           UPGRADE_CAP=256
           pending=(); final=0
-          for f in anchors/**/*.json.ots; do
+          # BOTH kinds: `*.json.ots` attests the file, `*.root.ots` attests the root. A glob naming only the
+          # first would leave every conformant proof pending forever — the new kind would be created and never
+          # upgraded, which looks identical to a calendar that never commits.
+          for f in anchors/**/*.ots; do
             if ots info "$f" 2>/dev/null | grep -q 'BitcoinBlockHeaderAttestation'; then
               final=$((final+1))
             else
@@ -133,3 +150,17 @@ jobs:
             exit 1
           fi
           echo "OK — every anchor older than 3h carries a stamp"
+
+      # AND THE SAME ASSERTION FOR THE CONFORMANT KIND, from the boundary forward.
+      #
+      # Without it the root-stamping step could stop producing anything and every signal above would stay
+      # green: file-stamps keep appearing, the count keeps rising, the badge stays clean. That is precisely the
+      # shape that hid six weeks of no stamping at all — a leg whose silence is indistinguishable from health.
+      #
+      # It lives in the stamper rather than in shell so the boundary and the `.root.ots` naming are written
+      # ONCE, and because the first attempt at writing it here measured nothing: `globstar` is bash 4+ and
+      # `date -d` is GNU, so on the author's machine the loop iterated zero files and printed a green verdict.
+      # Exercised in three directions before shipping — red on a missing stamp, green when present, and red on
+      # an EMPTY roster, since zero examined is never a pass.
+      - name: assert the conformant root proofs are fresh
+        run: python3 tools/stamp-roots.py --check
