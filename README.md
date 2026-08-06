@@ -29,7 +29,7 @@ and cannot be rewritten retroactively, including by the operator.
   "hour_ust": "ust:20260612.15",
   "merkle_root": "sha256:…",
   "slot_count": 120,
-  "hash_algo": "sha256-merkle-sorted-asc-odd-promotes",
+  "hash_algo": "rfc6962-sha256",
   "index_url": "https://archive.noosphere.md/archive/2026/06/12/15.index.json",
   "jwks": "https://noosphere.md/.well-known/jwks.json",
   "committed_at": "…"
@@ -37,8 +37,12 @@ and cannot be rewritten retroactively, including by the operator.
 ```
 
 `index_url` returns the hour index: every slot's `ust_id` and `hash`,
-sorted ascending. Merkle: sha256 over the concatenation of each pair,
-odd node promotes unchanged.
+sorted ascending. Merkle: **RFC 6962** — a leaf is `sha256(0x00 || hash)`, an
+interior node is `sha256(0x01 || left || right)`, and a level of `n` leaves
+splits at the largest power of two **below** `n` (so 120 splits 64 / 56, not
+60 / 60). The odd-node-promotes tree this document described until 2026-08-06
+was never what the anchor worker computed; the recipe below is executed against
+a live anchor before each change to this file.
 
 ## Verify by hand
 
@@ -46,19 +50,28 @@ odd node promotes unchanged.
 beyond Python):
 
 ```bash
-python3 - anchors/2026/06/12/15.json <<'EOF'
+python3 - anchors/2026/08/05/21.json <<'EOF'
 import json, hashlib, sys, urllib.request
 a = json.load(open(sys.argv[1]))
 req = urllib.request.Request(a["index_url"], headers={"User-Agent": "ust-verify"})
 idx = json.loads(urllib.request.urlopen(req).read())
-level = [bytes.fromhex(s["hash"].removeprefix("sha256:")) for s in idx["slots"]]
-while len(level) > 1:
-    level = [hashlib.sha256(level[i] + level[i + 1]).digest() if i + 1 < len(level) else level[i]
-             for i in range(0, len(level), 2)]
-root = "sha256:" + level[0].hex()
-print("recomputed :", root)
+
+H    = lambda b: hashlib.sha256(b).digest()
+leaf = lambda d: H(b"\x00" + d)                 # RFC 6962 leaf
+node = lambda l, r: H(b"\x01" + l + r)          # RFC 6962 interior
+
+def root(xs):
+    if len(xs) == 1:
+        return xs[0]
+    k = 1 << ((len(xs) - 1).bit_length() - 1)   # largest power of two BELOW len(xs)
+    return node(root(xs[:k]), root(xs[k:]))
+
+leaves = [leaf(bytes.fromhex(s["hash"].removeprefix("sha256:"))) for s in idx["slots"]]
+got = "sha256:" + root(leaves).hex()
+print("slots      :", len(leaves))
+print("recomputed :", got)
 print("anchor says:", a["merkle_root"])
-print("MATCH" if root == a["merkle_root"] else "MISMATCH")
+print("MATCH" if got == a["merkle_root"] else "MISMATCH")
 EOF
 ```
 
