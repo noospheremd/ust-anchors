@@ -65,7 +65,9 @@ jobs:
           # Bitcoin attestation costs a file read and is skipped. And the remaining attempts are CAPPED: a
           # calendar commits within hours, so a pending proof missed today is picked up by tomorrow's run, and
           # the backlog drains itself without any run ever making a thousand requests.
-          UPGRADE_CAP=200
+          # 256, not a round decimal: the cap exists to bound a loop, and a power of two says it was chosen
+          # as a bound rather than picked because it looked reasonable.
+          UPGRADE_CAP=256
           pending=(); final=0
           for f in anchors/**/*.json.ots; do
             if ots info "$f" 2>/dev/null | grep -q 'BitcoinBlockHeaderAttestation'; then
