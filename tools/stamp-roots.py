@@ -126,19 +126,19 @@ def check(base: Path, slack_hours: float) -> int:
         if when < cutoff:
             stale += 1
             if stale <= 5:
-                print(f'  БЕЗ КОРНЕВОГО ШТАМПА: {p}')
+                print(f'  NO ROOT STAMP: {p}')
 
-    print(f'корневые штампы с {BOUNDARY}: {stamped}/{total} · {stale} старше {slack_hours}ч без штампа')
+    print(f'root stamps since {BOUNDARY}: {stamped}/{total} · {stale} older than {slack_hours}h unstamped')
     if stale:
-        print(f'::error::{stale} якорь(ей) за границей без КОРНЕВОГО штампа — bitcoin-ots требует аттестации '
-              f'корня, поэтому такие часы НЕ конформны, сколько бы файловых штампов у них ни было')
+        print(f'::error::{stale} anchor(s) past the boundary carry no ROOT stamp — bitcoin-ots attests the '
+              f'root, so those hours are NOT conformant however many file stamps they hold')
         return 1
     if total == 0:
         # Zero examined is not a pass. Past the boundary there is always at least the current hour, so an
         # empty roster means the roster is broken, not that the tree is clean.
-        print('::error::за границей не найдено ни одного якоря — перечисление сломано, а не дерево чисто')
+        print('::error::no anchor found past the boundary — the enumeration is broken, not the tree clean')
         return 1
-    print('ОК — каждый якорь за границей несёт корневой штамп')
+    print('OK — every anchor past the boundary carries a root stamp')
     return 0
 
 
@@ -146,20 +146,20 @@ def main():
     base = Path('anchors')
     if '--check' in sys.argv:
         if not base.is_dir():
-            print('нет каталога anchors/', file=sys.stderr)
+            print('anchors/ not found', file=sys.stderr)
             return 1
         return check(base, float(os.environ.get('ROOT_STAMP_SLACK_H', '3')))
     if not base.is_dir():
-        print('нет каталога anchors/ — запускать из корня репозитория якорей', file=sys.stderr)
+        print('anchors/ not found — run from the root of the anchor journal', file=sys.stderr)
         return 1
 
     todo, skipped_old, skipped_done, bad = collect(base)
-    print(f'граница               {BOUNDARY}')
-    print(f'до границы, пропущено {skipped_old}')
-    print(f'уже отштамповано      {skipped_done}')
-    print(f'к штамповке           {len(todo)}')
+    print(f'boundary              {BOUNDARY}')
+    print(f'before boundary, skipped {skipped_old}')
+    print(f'already stamped       {skipped_done}')
+    print(f'to stamp              {len(todo)}')
     for p, why in bad:
-        print(f'  ОТКАЗ {p}: {why}')
+        print(f'  REFUSED {p}: {why}')
     if bad:
         return 1
     if not todo:
@@ -168,7 +168,7 @@ def main():
     written = 0
     for i in range(0, len(todo), CHUNK):
         batch = todo[i:i + CHUNK]
-        print(f'штампую {len(batch)} корней одним вызовом')
+        print(f'stamping {len(batch)} roots in one call')
         for (p, digest), d in zip(batch, stamp(batch)):
             ctx = BytesSerializationContext()
             d.serialize(ctx)
@@ -179,11 +179,11 @@ def main():
             from opentimestamps.core.serialize import BytesDeserializationContext
             back = DetachedTimestampFile.deserialize(BytesDeserializationContext(out.read_bytes()))
             if back.timestamp.msg != digest:
-                print(f'  ОТКАЗ {out}: записанный msg не равен корню', file=sys.stderr)
+                print(f'  REFUSED {out}: the written msg is not the root', file=sys.stderr)
                 return 1
             written += 1
 
-    print(f'записано корневых штампов: {written}')
+    print(f'root stamps written: {written}')
     return 0
 
 
