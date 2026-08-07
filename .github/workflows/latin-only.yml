@@ -1,0 +1,28 @@
+# This journal is public, so it is written in English. The check runs on every push because writes arrive
+# through the contents API and cannot be refused at the door — the best available guarantee is that the
+# window between a violation and its being visible is one workflow run.
+name: latin-only
+
+on:
+  push:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  scan:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          # The commit range is read from git, so the pushed commits must actually be present. A shallow
+          # clone would leave `before..after` unresolvable and the scan would quietly cover nothing.
+          fetch-depth: 0
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Scan commit messages and file content
+        run: node tools/latin-only.mjs "${{ github.event.before }}" "${{ github.sha }}"
