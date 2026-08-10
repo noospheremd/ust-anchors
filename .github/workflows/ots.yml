@@ -106,12 +106,41 @@ jobs:
           fi
           find anchors -name "*.bak" -delete
 
+      # THIS LEG LOSES A RACE IT CANNOT WIN BY BEING FASTER, so it is written to survive losing.
+      #
+      # Measured 2026-08-10: every scheduled run since 2026-08-08 failed here — 8 of 8, then 24 of 25, then 7 of 7
+      # — with `! [rejected] main -> main (fetch first)`. Not one `.json.ots` reached the repository on 09-08 or
+      # 10-08, while `.root.ots` kept arriving: the root is written by the publisher's worker, the per-slot proofs
+      # only by this job. A leg that fails every hour is a leg that is off, and the assertion below cannot say so
+      # because it never runs.
+      #
+      # The race is structural, not incidental. This workflow triggers on `anchors/**/*.json`, so the worker's
+      # hourly anchor commit STARTS this run; the worker then commits `NN.root.ots` seconds later and moves the
+      # ref out from under it. Two independent writers, one branch, guaranteed to meet.
+      #
+      # WHY REBASE-AND-RETRY IS THE FIX AND NOT A BAND-AID. The writers touch DISJOINT paths — the worker adds
+      # `NN.json` and `NN.root.ots`, this job adds `NN.json.ots`. There is no content conflict to resolve, only a
+      # ref that advanced, so a rebase is always clean and the operations commute. Retrying a genuinely conflicting
+      # write would be papering over a design fault; retrying an append to a different file is the ordinary
+      # protocol for concurrent appenders to one ref.
+      #
+      # It fails LOUDLY when the retries run out: a push that silently gives up would recreate exactly the
+      # six-week silence recorded below.
       - name: commit proofs
         run: |
           git config user.name "ots-bot"
           git config user.email "contact@noosphere.md"
           git add -A anchors
-          git diff --cached --quiet || { git commit -m "ots: stamp/upgrade proofs"; git push; }
+          if git diff --cached --quiet; then echo "nothing to stamp this run"; exit 0; fi
+          git commit -m "ots: stamp/upgrade proofs"
+          for attempt in 1 2 3 4 5; do
+            if git push; then echo "pushed on attempt $attempt"; exit 0; fi
+            echo "push rejected — another writer advanced main; rebasing (attempt $attempt/5)"
+            git pull --rebase --no-edit || { echo "REBASE FAILED — the writers are no longer touching disjoint paths, which is a design change, not a race"; exit 1; }
+            sleep $(( attempt * 3 ))
+          done
+          echo "five pushes lost the race in a row — this is no longer contention, something is pushing continuously"
+          exit 1
 
       # A stamping leg that only speaks when it fails is indistinguishable from one that is switched off — which
       # is exactly what happened here: disabled on 2026-06-12 during construction, and nothing anywhere said so
