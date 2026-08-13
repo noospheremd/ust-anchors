@@ -1,0 +1,12 @@
+{
+  "protocol": "UST",
+  "kind": "outage-proof",
+  "event": "outage-start",
+  "detected_at": "2026-08-13T06:34:32.013Z",
+  "domain": "noosphere.md",
+  "missing_slots": 4,
+  "cadence_seconds": 30,
+  "observer": "noosphere-slot-watch",
+  "substrate": "cloudflare",
+  "hash": "sha256:01ec472313313d45b0a0b48fd031467f97696b8a4cdfa68f2fb41e52677c68db"
+}
