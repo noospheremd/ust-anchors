@@ -61,30 +61,81 @@ class Args:
 
 def hour_key(path: Path) -> str:
     """anchors/2026/08/06/12.json -> 2026/08/06/12 — comparable as a string because the parts are padded."""
-    return '/'.join(path.parts[-4:-1] + (path.stem,))
+    return '/'.join(path.parts[-4:-1] + (anchor_stem(path),))
+
+
+def anchor_stem(path: Path) -> str:
+    """The HOUR a file belongs to, with every companion suffix removed.
+
+    `12.json`, `12.ust1.json` and `12.ust1.proofs.json` all belong to hour 12. `Path.stem` gives `12`, `12.ust1`
+    and `12.ust1.proofs`, which sort fine but are not hours: `int('12.proofs')` raises, and the freshness check
+    below did exactly that on every proofs file it met.
+    """
+    return path.name.split('.', 1)[0]
+
+
+# EVERY `*.json` UNDER `anchors/` BELONGS TO EXACTLY ONE DECLARED CLASS.
+#
+# This sweeper walks a DIRECTORY, so a new artifact type joins its domain on the day something starts writing
+# one — no edit here, no review, no warning. Measured 2026-08-14: `*.proofs.json` began appearing on
+# 2026-08-12T15:02Z, every `ots` run since refused the entire journal, and because the refusal returns before the
+# stamping and the upgrade steps, pending OTS attestations went 38 hours without an upgrade. Nothing was wrong
+# with the anchors; an unknown shape was read as a malformed one.
+#
+# Classifying is not filtering. A named companion is counted and skipped; a file the roster does NOT name is
+# still refused out loud, so the next new type stops the sweeper rather than being silently stamped or silently
+# ignored. The roster is here, in one place, read by both the stamper and the freshness check.
+ANCHOR, COMPANION = 'anchor', 'companion'
+
+
+def classify(path: Path):
+    """(class, digest, why-refused) — exactly one of the first two is set, or the third is."""
+    try:
+        doc = json.loads(path.read_text())
+    except Exception as e:                                        # noqa: BLE001 — report, never guess
+        return None, None, f'unreadable JSON: {str(e)[:60]}'
+
+    if path.name.endswith('.proofs.json'):
+        # An inclusion-path bundle: the paths it carries run under a root that the anchor beside it already
+        # commits. Stamping this file would attest that THE FILE existed — the weaker claim this whole tool
+        # exists to stop being mistaken for a root proof.
+        if isinstance(doc, dict) and 'root' in doc and 'proofs' in doc:
+            return COMPANION, None, None
+        return None, None, 'a .proofs.json carrying no `root` and `proofs` is not an inclusion bundle'
+
+    if isinstance(doc, dict) and 'merkle_root' in doc:
+        try:
+            digest = bytes.fromhex(str(doc['merkle_root']).replace('sha256:', ''))
+        except Exception as e:                                    # noqa: BLE001
+            return None, None, str(e)[:80]
+        if len(digest) != 32:
+            return None, None, 'root is not 32 bytes'
+        return ANCHOR, digest, None
+
+    return None, None, ('no `merkle_root`, and the name matches no declared companion — '
+                        'add it to the roster in classify() or fix the producer')
 
 
 def collect(base: Path):
-    todo, skipped_old, skipped_done, bad = [], 0, 0, []
+    todo, skipped_old, skipped_done, companions, bad = [], 0, 0, 0, []
     for p in sorted(base.rglob('*.json')):
         if p.name.endswith('.ots'):
             continue
         if hour_key(p) < BOUNDARY:
             skipped_old += 1
             continue
+        kind, digest, why = classify(p)
+        if why is not None:
+            bad.append((p, why))
+            continue
+        if kind is COMPANION:
+            companions += 1
+            continue
         if p.with_suffix('.root.ots').exists() or Path(str(p)[:-5] + '.root.ots').exists():
             skipped_done += 1
             continue
-        try:
-            root = json.loads(p.read_text())['merkle_root']
-            digest = bytes.fromhex(root.replace('sha256:', ''))
-            if len(digest) != 32:
-                raise ValueError('root is not 32 bytes')
-        except Exception as e:                                    # noqa: BLE001 — report, never guess
-            bad.append((p, str(e)[:80]))
-            continue
         todo.append((p, digest))
-    return todo, skipped_old, skipped_done, bad
+    return todo, skipped_old, skipped_done, companions, bad
 
 
 def stamp(batch):
@@ -113,9 +164,20 @@ def check(base: Path, slack_hours: float) -> int:
     import datetime as dt
 
     cutoff = dt.datetime.now(dt.timezone.utc) - dt.timedelta(hours=slack_hours)
-    total = stamped = stale = 0
+    total = stamped = stale = companions = 0
+    unknown = []
     for p in sorted(base.rglob('*.json')):
         if p.name.endswith('.ots') or hour_key(p) < BOUNDARY:
+            continue
+        # The SAME roster the stamper uses. Before 2026-08-14 this loop counted every companion as an anchor
+        # owing a root stamp, so `stamped/total` understated coverage — and then it crashed, because a companion
+        # stem is not an hour: `int('14.proofs')` raises, and a freshness check that raises returns no verdict.
+        kind, _, why = classify(p)
+        if why is not None:
+            unknown.append((p, why))
+            continue
+        if kind is COMPANION:
+            companions += 1
             continue
         total += 1
         if Path(str(p)[:-5] + '.root.ots').exists():
@@ -128,7 +190,15 @@ def check(base: Path, slack_hours: float) -> int:
             if stale <= 5:
                 print(f'  NO ROOT STAMP: {p}')
 
-    print(f'root stamps since {BOUNDARY}: {stamped}/{total} · {stale} older than {slack_hours}h unstamped')
+    print(f'root stamps since {BOUNDARY}: {stamped}/{total} · {stale} older than {slack_hours}h unstamped '
+          f'· {companions} declared companion(s) skipped')
+    if unknown:
+        for p, why in unknown[:5]:
+            print(f'  UNCLASSIFIED {p}: {why}')
+        print(f'::error::{len(unknown)} file(s) under anchors/ match no declared class — the roster in '
+              f'classify() no longer describes what is being written, and a sweeper that cannot name a file '
+              f'must not decide whether it needs a proof')
+        return 1
     if stale:
         print(f'::error::{stale} anchor(s) past the boundary carry no ROOT stamp — bitcoin-ots attests the '
               f'root, so those hours are NOT conformant however many file stamps they hold')
@@ -153,10 +223,11 @@ def main():
         print('anchors/ not found — run from the root of the anchor journal', file=sys.stderr)
         return 1
 
-    todo, skipped_old, skipped_done, bad = collect(base)
+    todo, skipped_old, skipped_done, companions, bad = collect(base)
     print(f'boundary              {BOUNDARY}')
     print(f'before boundary, skipped {skipped_old}')
     print(f'already stamped       {skipped_done}')
+    print(f'declared companions   {companions}')
     print(f'to stamp              {len(todo)}')
     for p, why in bad:
         print(f'  REFUSED {p}: {why}')
