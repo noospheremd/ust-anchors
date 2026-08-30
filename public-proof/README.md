@@ -147,6 +147,27 @@ curl -s https://blockstream.info/api/block-height/964576 \
   | python3 -c "import json,sys,datetime; b=json.load(sys.stdin); print('height', b['height']); print('time  ', datetime.datetime.utcfromtimestamp(b['timestamp']).isoformat()+'Z'); print('merkle', b['merkle_root'])"
 ```
 
+## Why the journal has gaps
+
+Count the hours in `anchors/` and the coverage is 98.6%, not 100%. Some of what is missing we caused on purpose.
+
+The operator runs controlled failure scenarios against its own pipeline — the seal path, the receipt path, the
+anchor path — and each incident is written down as it happens rather than cleaned out of the record afterwards.
+**73 incident records** between 2026-06-30 and 2026-08-22 live in [`outages/`](../outages): `outage-start` /
+`outage-end`, `anchor-down` / `anchor-up`, `seal-down` / `seal-up`, `receipt-down` / `receipt-up`, each with the
+observer that saw it and the substrate it happened on. The failed interval is never backfilled and the published
+record is never rewritten: **the absence is part of the history.**
+
+**And here the same honesty applies to us.** Those 73 incidents each carry an OpenTimestamps stamp, and **all 73
+are still pending** — none has been upgraded to a Bitcoin attestation. The cause is not a calendar that refused;
+it is that the upgrade job's domain is `anchors/**` and never included this folder, so nobody was assigned the
+job. Measured 2026-08-30, filed operator-side. Until that is fixed, an incident record is timestamped but its
+commitment cannot be checked against a block — which is exactly the pending-to-final seam described above, met a
+second time in another corner of the same pipeline.
+
+So the honest reading of this journal is: *the successes are provable, the failures are recorded, and the proofs
+of the failures are not yet provable.* We would rather publish that sentence than a rounder number.
+
 ## Why this folder exists at all, and not just a pointer to the proofs file
 
 The `anchor.ots` inside `transcript.ust.json` is the **upgraded** proof. The copy embedded in
