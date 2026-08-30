@@ -31,16 +31,23 @@ Everything else this walkthrough uses is already public and served by someone ot
 
 Open **https://verify.ustprotocol.com**, paste the contents of `transcript.ust.json`.
 
-Expected:
+Expected — the page shows the verdict first, then each axis §14 decides:
 
 ```
 VALID:HIGH
-identity : corroborated / verified   (mode name, publisher noosphere.md)
-time     : anchored / verified       anchorTime 2026-08-29T13:38:38Z
+Authority resolution   publisher noosphere.md · identity corroborated · capacity 512 · no-fork served-list
+Time                   strength anchored · status verified · anchor time 2026-08-29T13:38:38Z
+                       inclusion proven · assurance explorer-single
 ```
 
 `time: anchored` is the line that matters here: the verifier followed the inclusion path to the hour root and
 confirmed that root against Bitcoin.
+
+**Why the browser says `explorer-single` and the terminal says `explorer-corroborated`.** Same fact, two strengths,
+each named honestly. The Node connector requires **two independent explorers to agree** before it calls an anchor
+final; the browser connector takes the first reachable explorer's answer. Neither is trustless Bitcoin finality —
+that needs a node or an SPV header chain — and neither pretends to be. The vocabulary is the same registered set,
+reported at the strength each one actually earns.
 
 **Why HIGH and not TOP, stated plainly.** TOP requires `identity: authoritative` — independent non-membership
 evidence for the name. This publisher serves its own witness log, which by the protocol's own rule earns
