@@ -103,12 +103,43 @@ EOF
 
 ## 4. Walk the OTS proof to the block
 
+The OpenTimestamps proof is read by **`@ust-protocol/ots-verify`** — a zero-dependency OTS proof verifier written
+from scratch for this protocol. It parses the proof, finds the Bitcoin attestation, and then does the part that
+matters: it checks the committed value against the **real merkle root of the block at that height**, fetched from
+two independent explorers, and requires the block to be buried under ≥ 6 confirmations. A structurally valid proof
+that does not match the chain is *not* accepted.
+
+```bash
+npm i @ust-protocol/ots-verify      # zero dependencies — check `npm ls` if you like
+node -e '
+import("@ust-protocol/ots-verify").then(async ({ makeSubstrateVerify }) => {
+  const fs = await import("node:fs");
+  const doc = JSON.parse(fs.readFileSync("transcript.ust.json", "utf8"));
+  const ots = fs.readFileSync("hour-root.ots").toString("base64");
+  const r = await makeSubstrateVerify()({ substrate: "bitcoin-ots", ots }, doc.proof.root);
+  console.log(r);
+});'
+```
+
+Expected:
+
+```
+{ final: true, time: "2026-08-29T13:38:38Z", block_height: "964576",
+  assurance: "explorer-corroborated", explorers: 2 }
+```
+
+`assurance: explorer-corroborated` is deliberately not called *Bitcoin finality*: two explorers agreeing is a
+weaker statement than a PoW-validated header chain, and the connector names its own ceiling rather than inflating
+it. Point it at your own node and it says so differently.
+
+**Cross-check with an independent implementation**, if you want the proof read by something that is not ours:
+
 ```bash
 pip install --quiet opentimestamps-client
 ots info hour-root.ots        # shows the BitcoinBlockHeaderAttestation and its height
 ```
 
-Then check the block against any explorer — the merkle root printed by `ots info` must equal the block's:
+And the block itself, from any explorer:
 
 ```bash
 curl -s https://blockstream.info/api/block-height/964576 \
@@ -116,13 +147,22 @@ curl -s https://blockstream.info/api/block-height/964576 \
   | python3 -c "import json,sys,datetime; b=json.load(sys.stdin); print('height', b['height']); print('time  ', datetime.datetime.utcfromtimestamp(b['timestamp']).isoformat()+'Z'); print('merkle', b['merkle_root'])"
 ```
 
-## One honest note about this file's `anchor`
+## Why this folder exists at all, and not just a pointer to the proofs file
 
-The `anchor.ots` inside `transcript.ust.json` is the **upgraded** proof — the same timestamp as the one in
-`12.ust1.proofs.json`, after the calendars committed it into Bitcoin. The copy embedded in the proofs file at
-publication time was still *pending*, and upgrading it is a publisher-side operation that does not rewrite the
-already-published file. A verifier handed the pending copy answers `unproven / pending`, which is the correct
-answer for those bytes — pending is a true state, not a failure.
+The `anchor.ots` inside `transcript.ust.json` is the **upgraded** proof. The copy embedded in
+`anchors/2026/08/29/12.ust1.proofs.json` is the same timestamp as it stood at publication time — *pending*, with
+no Bitcoin attestation yet. Upgrading writes a separate file (`12.ust1.root.ots`) and does not rewrite the
+published proofs file.
 
-This is exactly the kind of operational seam that makes Bitcoin anchoring harder to run than to describe, and
-it is recorded here rather than tidied away.
+**And it never will.** Measured 2026-08-30 across the journal: **398 of 398** published `*.proofs.json` files
+still carry a pending anchor — not one has been upgraded in place, including hours whose root reached Bitcoin
+weeks ago. So a reader who assembles a document straight from the proofs file gets `unproven / pending` today and
+gets it a year from now. That is a correct verdict about those bytes — pending is a true state, not a failure —
+but it is not the whole evidence the operator holds, and nothing in the file says where the rest of it lives.
+
+That gap is the reason this folder exists: it pairs the transcript with the proof that *is* final, so the walk to
+Bitcoin can be completed by someone who has never spoken to us. The underlying fix belongs on the operator side —
+either the proofs file carries the upgraded anchor, or it points at the file that does.
+
+This is the ordinary shape of Bitcoin anchoring in practice: the cryptography was never the hard part; batching,
+calendars, upgrades and where the upgraded bytes end up are.
