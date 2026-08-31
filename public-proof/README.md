@@ -154,6 +154,16 @@ curl -s https://blockstream.info/api/block-height/964576 \
   | python3 -c "import json,sys,datetime; b=json.load(sys.stdin); print('height', b['height']); print('time  ', datetime.datetime.utcfromtimestamp(b['timestamp']).isoformat()+'Z'); print('merkle', b['merkle_root'])"
 ```
 
+## Checked by implementations that are not ours
+
+Four OpenTimestamps readers — the reference Python client, the unmaintained JavaScript library, a new TypeScript
+one, and ours — were run against `hour-root.ots` in throwaway containers on 2026-08-31. Three name the same
+Bitcoin block **964576**; all four read the same digest, which is the `proof.root` inside `transcript.ust.json`.
+
+The run also records the command that does **not** work — `ots verify` assumes a file, our timestamp is over a
+digest — and what each level of checking is actually worth. See
+[`cross-implementation-check.md`](cross-implementation-check.md).
+
 ## Why the journal has gaps
 
 Count the hours in `anchors/` and the coverage is 98.6%, not 100%. Some of what is missing we caused on purpose.
