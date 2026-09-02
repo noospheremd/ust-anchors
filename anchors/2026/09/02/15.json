@@ -1,0 +1,10 @@
+{
+  "protocol": "UST",
+  "hour_ust": "ust:20260902.15",
+  "merkle_root": "sha256:80ade248b5670235b51a9352e6ba955f1f4c95bec8ef652debd48e0e6259a7f9",
+  "slot_count": 120,
+  "hash_algo": "rfc6962-sha256",
+  "source": "secondary",
+  "committed_at": "2026-09-02T16:12:04.029Z",
+  "ipfs_cid": "QmPA7pCpCPKBzscyT6yWqZxUD4G4oJHRMz6ivMXHHABBr8"
+}
