@@ -1,0 +1,9 @@
+{
+  "protocol": "UST",
+  "hour_ust": "ust:20260909.18",
+  "merkle_root": "sha256:3746cfe65da8bde5b79f242742bb6fed627b620fc76667bf9d42a9ca15b32191",
+  "slot_count": 120,
+  "hash_algo": "rfc6962-sha256",
+  "source": "secondary",
+  "committed_at": "2026-09-09T19:12:03.376Z"
+}
